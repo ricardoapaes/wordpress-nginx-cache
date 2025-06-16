@@ -2,31 +2,33 @@ services:
 
   nginx-cache:
     image: ricardopaes/wordpress-nginx-cache:latest
-    build:
-      context: .
+
     volumes:
       - nginx-cache-data:/var/cache/nginx
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wordpress-cache.rule=Host(`${WP_HOST}`)"
-      - "traefik.http.routers.wordpress-cache.entrypoints=websecure"
-      - "traefik.http.routers.wordpress-cache.tls.certresolver=myresolver"
-      - "traefik.http.services.wordpress-cache.loadbalancer.server.port=80"
-    networks:
-      - traefik-proxy
-    deploy:
-      replicas: 1
-      update_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-  
-networks:
-  traefik-proxy:
-    name: ${WP_NETWORK}
-    external: true
 
+    networks:
+      - nginx-network
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nginx_crn1.rule=Host(`${WORDPRESS_DOMAIN}`)
+        - traefik.http.routers.nginx_crn1.entrypoints=websecure
+        - traefik.http.routers.nginx_crn1.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.nginx_crn1.service=wordpress_crn1
+        - traefik.http.services.nginx_crn1.loadbalancer.server.port=80
+        - traefik.http.services.nginx_crn1.loadbalancer.passHostHeader=true
+        
 volumes:
   nginx-cache-data:
     driver: local
+
+networks:
+  nginx-network:
+    name: ${WORDPRESS_NETWORK}
+    external: true
